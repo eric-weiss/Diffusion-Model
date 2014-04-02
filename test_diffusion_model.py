@@ -7,24 +7,24 @@ from diffusion_model import diffusion_model
 
 
 nx=2
-nsamps=8000
+nsamps=64000
 
-nhid_mu=4
-nhid_cov=4
+nhid_mu=20
+nhid_cov=20
 
 #beta=1e-2
-nsteps=300
+nsteps=100
 beta = 1. - np.exp(np.log(0.0001)/float(nsteps))
 print beta
 
-batchsize=5
+batchsize=10
 
 lrate=1e-3
 
 #making some data
-nmix=2
+nmix=4
 mixmeans=np.random.randn(nmix,nx)*0.0
-mixmeans[0,0]=12.0; mixmeans[1,0]=-12.0
+mixmeans[0,0]=12.0; mixmeans[1,0]=-12.0; mixmeans[2,1]=12.0; mixmeans[3,1]=-12.0
 probs=np.random.rand(nmix)*0.0+1.0
 probs=probs/np.sum(probs)
 data=[]
@@ -35,9 +35,9 @@ for i in range(nsamps):
 data=np.asarray(data, dtype='float32')
 #data=data/np.sqrt(np.mean(np.sum(data**2,axis=1)))
 print data.shape
-pp.scatter(data[:,0],data[:,1])
+pp.scatter(data[:,0],data[:,1]); pp.show()
 
-model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov)
+model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov, ntgates=20)
 
 xT=T.fmatrix()
 xseq, xseq_updates=model.compute_forward_trajectory(xT)
@@ -45,7 +45,7 @@ get_forward_traj=theano.function([xT],xseq,updates=xseq_updates,allow_input_down
 data_forward_traj=np.asarray(get_forward_traj(data),dtype='float32')
 dft_shared=theano.shared(data_forward_traj)
 print data_forward_traj.shape
-pp.scatter(data_forward_traj[-1,:,0],data_forward_traj[-1,:,1],c='r'); pp.show()
+#pp.scatter(data_forward_traj[-1,:,0],data_forward_traj[-1,:,1],c='r'); pp.show()
 
 lrT=T.fscalar()
 xtrajT=T.ftensor3()
@@ -73,10 +73,10 @@ tgt=model.get_tgating()
 get_tgates=theano.function([],tgt)
 
 tgates=get_tgates()
-pp.plot(tgates[:,0,:,0]); pp.show()
+#pp.plot(tgates[:,0,:,0]); pp.show()
 
 loss_hist=[]
-for i in range(8000):
+for i in range(4000):
 	idx=np.random.randint(nsamps-batchsize-1)
 	batchloss,lossterms=train_model(idx,lrate)
 	loss_hist.append(batchloss)
@@ -98,7 +98,7 @@ samples,t=sample_model(1000)
 pp.figure(1)
 pp.scatter(data[:,0],data[:,1])
 pp.scatter(samples[:,0],samples[:,1],c='r')
-tgates=get_tgates()
-pp.figure(2); pp.plot(tgates[:,0,:,0])
+#tgates=get_tgates()
+#pp.figure(2); pp.plot(tgates[:,0,:,0])
 pp.show()
 
