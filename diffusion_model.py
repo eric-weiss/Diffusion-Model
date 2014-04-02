@@ -203,7 +203,7 @@ class diffusion_model():
 										outputs_info=[x0,t],
 										non_sequences=nsamps,
 										n_steps=self.nsteps+1)
-		return samphist[-1,0,:,:], ts[:,0], updates
+		return samphist[:,0,:,:], ts[:,0], updates
 		
 		
 	def get_tgating(self):

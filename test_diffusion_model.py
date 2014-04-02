@@ -2,7 +2,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 from matplotlib import pyplot as pp
-
+from matplotlib import animation
 from diffusion_model import diffusion_model
 
 
@@ -76,7 +76,7 @@ tgates=get_tgates()
 #pp.plot(tgates[:,0,:,0]); pp.show()
 
 loss_hist=[]
-for i in range(4000):
+for i in range(400):
 	idx=np.random.randint(nsamps-batchsize-1)
 	batchloss,lossterms=train_model(idx,lrate)
 	loss_hist.append(batchloss)
@@ -95,10 +95,32 @@ loss_hist=np.asarray(loss_hist)
 pp.plot(loss_hist); pp.show()
 
 samples,t=sample_model(1000)
-pp.figure(1)
-pp.scatter(data[:,0],data[:,1])
-pp.scatter(samples[:,0],samples[:,1],c='r')
+
+fig = pp.figure()
+ax = pp.axes(xlim=(-16, 16), ylim=(-16, 16))
+line, = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
+
+def init():
+	line.set_data([], [])
+	return line,
+
+# animation function.  This is called sequentially
+def animate(i):
+	line.set_data(samples[i,:,0],samples[i,:,1])
+	return line,
+
+anim = animation.FuncAnimation(fig, animate, init_func=init,
+							   frames=200, interval=20, blit=True)
+
+anim.save('basic_animation.mp4', fps=20, extra_args=['-vcodec', 'libx264'])
+
+pp.show()
+
+
+#pp.figure(1)
+#pp.scatter(data[:,0],data[:,1])
+#pp.scatter(samples[:,0],samples[:,1],c='r')
 #tgates=get_tgates()
 #pp.figure(2); pp.plot(tgates[:,0,:,0])
-pp.show()
+#pp.show()
 
