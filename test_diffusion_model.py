@@ -23,23 +23,23 @@ print beta
 
 batchsize=10
 
-lrate=1e-3
+lrate=5e-4
 
 #making some data
-nmix=2
-mixmeans=np.random.randn(nmix,nx)*0.0
-mixmeans[0,0]=12.0; mixmeans[1,0]=-12.0#; mixmeans[2,1]=12.0; mixmeans[3,1]=-12.0
-probs=np.random.rand(nmix)*0.0+1.0
-probs=probs/np.sum(probs)
-data=[]
-for i in range(nsamps):
-	midx=np.dot(np.arange(nmix),np.random.multinomial(1,probs))
-	nsamp=np.random.randn(nx)*(float(midx)+1.0)*1.0
-	data.append(mixmeans[int(midx)]+nsamp)
+#nmix=2
+#mixmeans=np.random.randn(nmix,nx)*0.0
+#mixmeans[0,0]=12.0; mixmeans[1,0]=-12.0#; mixmeans[2,1]=12.0; mixmeans[3,1]=-12.0
+#probs=np.random.rand(nmix)*0.0+1.0
+#probs=probs/np.sum(probs)
+#data=[]
+#for i in range(nsamps):
+	#midx=np.dot(np.arange(nmix),np.random.multinomial(1,probs))
+	#nsamp=np.random.randn(nx)*(float(midx)+1.0)*1.0
+	#data.append(mixmeans[int(midx)]+nsamp)
 	
-#data=np.random.rand(nsamps,2)*10.0+8.0
-#data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.5
-#data=data.T
+data=np.random.rand(nsamps,2)*8.0+4.0
+data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.25
+data=4.0*data.T
 
 data=np.asarray(data, dtype='float32')
 
@@ -108,7 +108,7 @@ pp.plot(loss_hist); pp.show()
 samples,t=sample_model(1000)
 
 fig = pp.figure()
-ax = pp.axes(xlim=(-20, 20), ylim=(-20, 20))
+ax = pp.axes(xlim=(-50, 50), ylim=(-50, 50))
 paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
 
 def init():
