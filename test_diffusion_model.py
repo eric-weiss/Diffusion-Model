@@ -4,6 +4,7 @@ import theano.tensor as T
 from matplotlib import pyplot as pp
 from matplotlib import animation
 from diffusion_model import diffusion_model
+from matplotlib.path import Path
 
 
 nx=2
@@ -13,8 +14,8 @@ nhid_mu=20
 nhid_cov=20
 
 #beta=1e-2
-nsteps=100
-beta = 1. - np.exp(np.log(0.0001)/float(nsteps))
+nsteps=300
+beta = 1. - np.exp(np.log(0.01)/float(nsteps))
 print beta
 
 batchsize=10
@@ -22,22 +23,30 @@ batchsize=10
 lrate=1e-3
 
 #making some data
-nmix=4
+nmix=2
 mixmeans=np.random.randn(nmix,nx)*0.0
-mixmeans[0,0]=12.0; mixmeans[1,0]=-12.0; mixmeans[2,1]=12.0; mixmeans[3,1]=-12.0
+mixmeans[0,0]=12.0; mixmeans[1,0]=-12.0#; mixmeans[2,1]=12.0; mixmeans[3,1]=-12.0
 probs=np.random.rand(nmix)*0.0+1.0
 probs=probs/np.sum(probs)
 data=[]
 for i in range(nsamps):
 	midx=np.dot(np.arange(nmix),np.random.multinomial(1,probs))
-	nsamp=np.random.randn(nx)*1.0
+	nsamp=np.random.randn(nx)*float(midx+1.0)*1.0
 	data.append(mixmeans[int(midx)]+nsamp)
+	
+#data=np.random.rand(nsamps,2)*10.0+8.0
+#data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.5
+#data=data.T
+
 data=np.asarray(data, dtype='float32')
-#data=data/np.sqrt(np.mean(np.sum(data**2,axis=1)))
+
+
+
+#data=4.0*data/np.sqrt(np.mean(np.sum(data**2,axis=1)))
 print data.shape
 pp.scatter(data[:,0],data[:,1]); pp.show()
 
-model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov, ntgates=20)
+model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov, ntgates=40)
 
 xT=T.fmatrix()
 xseq, xseq_updates=model.compute_forward_trajectory(xT)
@@ -76,7 +85,7 @@ tgates=get_tgates()
 #pp.plot(tgates[:,0,:,0]); pp.show()
 
 loss_hist=[]
-for i in range(400):
+for i in range(10000):
 	idx=np.random.randint(nsamps-batchsize-1)
 	batchloss,lossterms=train_model(idx,lrate)
 	loss_hist.append(batchloss)
@@ -97,22 +106,25 @@ pp.plot(loss_hist); pp.show()
 samples,t=sample_model(1000)
 
 fig = pp.figure()
-ax = pp.axes(xlim=(-16, 16), ylim=(-16, 16))
-line, = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
+ax = pp.axes(xlim=(-20, 20), ylim=(-20, 20))
+paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
 
 def init():
-	line.set_data([], [])
-	return line,
+	paths.set_offsets(samples[0,:,:])
+	return paths,
 
 # animation function.  This is called sequentially
 def animate(i):
-	line.set_data(samples[i,:,0],samples[i,:,1])
-	return line,
+	if i<nsteps:
+		paths.set_offsets(samples[i,:,:])
+	else:
+		paths.set_offsets(samples[-1,:,:])
+	return paths,
 
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-							   frames=200, interval=20, blit=True)
+							   frames=nsteps+50, interval=20, blit=True)
 
-anim.save('basic_animation.mp4', fps=20, extra_args=['-vcodec', 'libx264'])
+anim.save('basic_animation.mp4', fps=20)#, extra_args=['-vcodec', 'libx264'])
 
 pp.show()
 
