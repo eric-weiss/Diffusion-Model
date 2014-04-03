@@ -34,7 +34,7 @@ probs=probs/np.sum(probs)
 data=[]
 for i in range(nsamps):
 	midx=np.dot(np.arange(nmix),np.random.multinomial(1,probs))
-	nsamp=np.random.randn(nx)*1.0
+	nsamp=np.random.randn(nx)*(float(midx)+1.0)*1.0
 	data.append(mixmeans[int(midx)]+nsamp)
 	
 #data=np.random.rand(nsamps,2)*10.0+8.0
