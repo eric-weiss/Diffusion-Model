@@ -10,13 +10,15 @@ from matplotlib.path import Path
 nx=2
 nsamps=64000
 
-nhid_mu=20
-nhid_cov=20
+nhid_mu=32
+nhid_cov=32
+nout_mu=16
+nout_cov=16
 
 #beta=1e-2
 nsteps=200
-#beta = 1. - np.exp(np.log(0.01)/float(nsteps))
-beta=0.005
+beta = 1. - np.exp(np.log(0.001)/float(nsteps))
+#beta=0.04
 print beta
 
 batchsize=10
@@ -32,7 +34,7 @@ probs=probs/np.sum(probs)
 data=[]
 for i in range(nsamps):
 	midx=np.dot(np.arange(nmix),np.random.multinomial(1,probs))
-	nsamp=np.random.randn(nx)*float(midx+1.0)*1.0
+	nsamp=np.random.randn(nx)*1.0
 	data.append(mixmeans[int(midx)]+nsamp)
 	
 #data=np.random.rand(nsamps,2)*10.0+8.0
@@ -42,12 +44,11 @@ for i in range(nsamps):
 data=np.asarray(data, dtype='float32')
 
 
-
 #data=4.0*data/np.sqrt(np.mean(np.sum(data**2,axis=1)))
 print data.shape
 pp.scatter(data[:,0],data[:,1]); pp.show()
 
-model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov, ntgates=40)
+model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov, nout_mu, nout_cov, ntgates=20)
 
 xT=T.fmatrix()
 xseq, xseq_updates=model.compute_forward_trajectory(xT)
@@ -86,7 +87,7 @@ tgates=get_tgates()
 #pp.plot(tgates[:,0,:,0]); pp.show()
 
 loss_hist=[]
-for i in range(10000):
+for i in range(8000):
 	idx=np.random.randint(nsamps-batchsize-1)
 	batchloss,lossterms=train_model(idx,lrate)
 	loss_hist.append(batchloss)
@@ -98,7 +99,7 @@ for i in range(10000):
 		print batchloss
 		
 		#pp.plot(lossterms); pp.show()
-	lrate=lrate*0.9998
+	lrate=lrate*0.9997
 	#pp.plot(np.asarray(lseq)); pp.show()
 
 loss_hist=np.asarray(loss_hist)

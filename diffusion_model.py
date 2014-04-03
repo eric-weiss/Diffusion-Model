@@ -7,7 +7,8 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 class diffusion_model():
 	
-	def __init__(self, nx, nb, nsteps, beta, nhid_mu, nhid_cov, ntgates=40):
+	def __init__(self, nx, nb, nsteps, beta, nhid_mu, nhid_cov, 
+					nout_mu, nout_cov, ntgates=40):
 		
 		self.nx=nx
 		self.nb=nb
@@ -15,19 +16,25 @@ class diffusion_model():
 		self.beta=beta
 		self.nhid_mu=nhid_mu
 		self.nhid_cov=nhid_cov
+		self.nout_mu=nout_mu
+		self.nout_cov=nout_cov
 		self.ntgates=ntgates
 		
 		self.kT=-np.log(0.5)*8.0*self.ntgates**2
 		
 		muW0=np.random.randn(nx, nhid_mu)*0.1
-		muW1=np.random.randn(nhid_mu, ntgates*nx)*0.1
+		muW1=np.random.randn(nhid_mu, nout_mu)*0.1
+		muW2=np.random.randn(nout_mu, ntgates*nx)*0.1
 		mub0=np.zeros(nhid_mu)
-		mub1=np.zeros(nx)
+		mub1=np.zeros(nout_mu)
+		mub2=np.zeros(nx)
 		
 		covW0=np.random.randn(nx, nhid_cov)*0.1
-		covW1=np.random.randn(nhid_cov, ntgates*nx)*0.1
+		covW1=np.random.randn(nhid_cov, nout_cov)*0.1
+		covW2=np.random.randn(nout_cov, ntgates*nx)*0.1
 		covb0=np.zeros(nhid_cov)
-		covb1=np.zeros(nx)
+		covb1=np.zeros(nout_cov)
+		covb2=np.zeros(nx)
 		
 		
 		#muWT=np.random.randn(1,ntgates)*0.0
@@ -42,12 +49,16 @@ class diffusion_model():
 		
 		self.muW0=theano.shared(np.asarray(muW0,dtype='float32'))
 		self.muW1=theano.shared(np.asarray(muW1,dtype='float32'))
+		self.muW2=theano.shared(np.asarray(muW2,dtype='float32'))
 		self.mub0=theano.shared(np.asarray(mub0,dtype='float32'))
 		self.mub1=theano.shared(np.asarray(mub1,dtype='float32'))
+		self.mub2=theano.shared(np.asarray(mub2,dtype='float32'))
 		self.covW0=theano.shared(np.asarray(covW0,dtype='float32'))
 		self.covW1=theano.shared(np.asarray(covW1,dtype='float32'))
+		self.covW2=theano.shared(np.asarray(covW2,dtype='float32'))
 		self.covb0=theano.shared(np.asarray(covb0,dtype='float32'))
 		self.covb1=theano.shared(np.asarray(covb1,dtype='float32'))
+		self.covb2=theano.shared(np.asarray(covb2,dtype='float32'))
 		
 		#self.muWT=theano.shared(np.asarray(muWT*2.0,dtype='float32'))
 		#self.covWT=theano.shared(np.asarray(covWT*2.0,dtype='float32'))
@@ -57,7 +68,8 @@ class diffusion_model():
 		self.theano_rng = RandomStreams()
 		
 		self.params=[self.muW0, self.muW1, self.mub0, self.mub1,
-					self.covW0, self.covW1, self.covb0, self.covb1]
+					self.covW0, self.covW1, self.covb0, self.covb1,
+					self.muW2, self.mub2, self.covW2, self.covb2]
 					#self.muWT, self.covWT, self.mubT, self.covbT]
 		
 		self.true_params=[]
@@ -72,9 +84,10 @@ class diffusion_model():
 	
 	def compute_f_mu(self, x, t):
 		
-		h=T.nnet.sigmoid(T.dot(x,self.muW0)+self.mub0) #nt by nb by nhidmu
-		z=T.dot(h,self.muW1)
-		z=T.reshape(z,(t.shape[0],t.shape[1],self.ntgates,self.nx))+self.mub1 #nt by nb by ntgates by nx
+		h=T.nnet.softplus(T.dot(x,self.muW0)+self.mub0) #nt by nb by nhidmu
+		h2=T.nnet.softplus(T.dot(h,self.muW1)+self.mub1)
+		z=T.dot(h2,self.muW2)
+		z=T.reshape(z,(t.shape[0],t.shape[1],self.ntgates,self.nx))+self.mub2 #nt by nb by ntgates by nx
 		#z=z+T.reshape(x,(t.shape[0],t.shape[1],1,self.nx))
 		
 		tpoints=T.cast(T.arange(self.ntgates),'float32')/T.cast(self.ntgates-1,'float32')
@@ -88,7 +101,7 @@ class diffusion_model():
 		
 		out=T.sum(mult,axis=2)
 		
-		out=out+x
+		#out=out+x
 		
 		return T.cast(out,'float32')
 	
@@ -96,8 +109,9 @@ class diffusion_model():
 	def compute_f_cov(self, x, t):
 		
 		h=T.nnet.sigmoid(T.dot(x,self.covW0)+self.covb0) #nt by nb by nhidmu
-		z=T.dot(h,self.covW1)
-		z=T.reshape(z,(t.shape[0],t.shape[1],self.ntgates,self.nx))+self.covb1 #nt by nb by ntgates by 1
+		h2=T.nnet.sigmoid(T.dot(h,self.covW1)+self.covb1)
+		z=T.dot(h2,self.covW2)
+		z=T.reshape(z,(t.shape[0],t.shape[1],self.ntgates,self.nx))+self.covb2 #nt by nb by ntgates by 1
 		z=T.exp(z)
 		
 		tpoints=T.cast(T.arange(self.ntgates),'float32')/T.cast(self.ntgates-1,'float32')
@@ -118,7 +132,7 @@ class diffusion_model():
 		
 		samps=self.theano_rng.normal(size=x.shape)*T.sqrt(self.beta+t)
 		means=x*T.sqrt(1.0-(self.beta+t))
-		return T.cast(means+samps,'float32'), T.cast(t+0.05/200.0,'float32')
+		return T.cast(means+samps,'float32'), T.cast(t+0.00/200.0,'float32')
 	
 	
 	def compute_forward_trajectory(self, x0):
