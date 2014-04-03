@@ -114,17 +114,17 @@ class diffusion_model():
 		return T.cast(out,'float32')
 	
 	
-	def forward_step(self, x):
+	def forward_step(self, x, t):
 		
-		samps=self.theano_rng.normal(size=x.shape)*T.sqrt(self.beta)
-		means=x*T.sqrt(1.0-self.beta)
-		return T.cast(means+samps,'float32')
+		samps=self.theano_rng.normal(size=x.shape)*T.sqrt(self.beta+t)
+		means=x*T.sqrt(1.0-(self.beta+t))
+		return T.cast(means+samps,'float32'), T.cast(t+0.05/200.0,'float32')
 	
 	
 	def compute_forward_trajectory(self, x0):
 		
-		x_seq, updates=theano.scan(fn=self.forward_step,
-										outputs_info=x0,
+		[x_seq, ts], updates=theano.scan(fn=self.forward_step,
+										outputs_info=[x0, 0.0],
 										n_steps=self.nsteps)
 		return x_seq, updates
 	

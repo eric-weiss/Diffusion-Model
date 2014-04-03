@@ -14,8 +14,9 @@ nhid_mu=20
 nhid_cov=20
 
 #beta=1e-2
-nsteps=300
-beta = 1. - np.exp(np.log(0.01)/float(nsteps))
+nsteps=200
+#beta = 1. - np.exp(np.log(0.01)/float(nsteps))
+beta=0.005
 print beta
 
 batchsize=10
@@ -54,7 +55,7 @@ get_forward_traj=theano.function([xT],xseq,updates=xseq_updates,allow_input_down
 data_forward_traj=np.asarray(get_forward_traj(data),dtype='float32')
 dft_shared=theano.shared(data_forward_traj)
 print data_forward_traj.shape
-#pp.scatter(data_forward_traj[-1,:,0],data_forward_traj[-1,:,1],c='r'); pp.show()
+pp.scatter(data_forward_traj[-1,:,0],data_forward_traj[-1,:,1],c='r'); pp.show()
 
 lrT=T.fscalar()
 xtrajT=T.ftensor3()
