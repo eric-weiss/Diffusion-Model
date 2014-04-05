@@ -5,19 +5,29 @@ from matplotlib import pyplot as pp
 from matplotlib import animation
 from diffusion_model import diffusion_model
 from matplotlib.path import Path
+import scipy as sp
+
+def whiten(x):
+	mu=np.mean(x,axis=0)
+	x=x-mu
+	cov=np.cov(x.T)
+	cov_inv=np.linalg.inv(cov)
+	cov_inv_sqrt=sp.linalg.sqrtm(cov_inv)
+	out=np.dot(x,cov_inv_sqrt)
+	return out
 
 
 nx=2
-nsamps=64000
+nsamps=6400
 
-nhid_mu=32
-nhid_cov=32
+nhid_mu=16
+nhid_cov=16
 nout_mu=16
 nout_cov=16
 
 #beta=1e-2
-nsteps=200
-beta = 1. - np.exp(np.log(0.001)/float(nsteps))
+nsteps=100
+beta = 1. - np.exp(np.log(0.5)/float(nsteps))
 #beta=0.04
 print beta
 
@@ -43,10 +53,14 @@ data=4.0*data.T
 
 data=np.asarray(data, dtype='float32')
 
+data=whiten(data)
 
 #data=4.0*data/np.sqrt(np.mean(np.sum(data**2,axis=1)))
 print data.shape
+#pp.matshow(np.cov(data.T)); pp.colorbar()
+#pp.figure(2)
 pp.scatter(data[:,0],data[:,1]); pp.show()
+
 
 model=diffusion_model(nx, batchsize, nsteps, beta, nhid_mu, nhid_cov, nout_mu, nout_cov, ntgates=20)
 
@@ -87,7 +101,7 @@ tgates=get_tgates()
 #pp.plot(tgates[:,0,:,0]); pp.show()
 
 loss_hist=[]
-for i in range(8000):
+for i in range(4000):
 	idx=np.random.randint(nsamps-batchsize-1)
 	batchloss,lossterms=train_model(idx,lrate)
 	loss_hist.append(batchloss)
@@ -107,27 +121,27 @@ pp.plot(loss_hist); pp.show()
 
 samples,t=sample_model(1000)
 
-fig = pp.figure()
-ax = pp.axes(xlim=(-50, 50), ylim=(-50, 50))
-paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
+#fig = pp.figure()
+#ax = pp.axes(xlim=(-3, 3), ylim=(-3, 3))
+#paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
 
-def init():
-	paths.set_offsets(samples[0,:,:])
-	return paths,
+#def init():
+	#paths.set_offsets(samples[0,:,:])
+	#return paths,
 
-# animation function.  This is called sequentially
-def animate(i):
-	if i<nsteps:
-		paths.set_offsets(samples[i,:,:])
-	else:
-		paths.set_offsets(samples[-1,:,:])
-	return paths,
+## animation function.  This is called sequentially
+#def animate(i):
+	#if i<nsteps:
+		#paths.set_offsets(samples[i,:,:])
+	#else:
+		#paths.set_offsets(samples[-1,:,:])
+	#return paths,
 
-anim = animation.FuncAnimation(fig, animate, init_func=init,
-							   frames=nsteps+50, interval=20, blit=True)
+#anim = animation.FuncAnimation(fig, animate, init_func=init,
+#							   frames=nsteps+50, interval=20, blit=True)
 
-anim.save('basic_animation.mp4', fps=20)#, extra_args=['-vcodec', 'libx264'])
-
+#anim.save('basic_animation.mp4', fps=20)#, extra_args=['-vcodec', 'libx264'])
+pp.scatter(samples[-1,:,0],samples[-1,:,1],c='r')
 pp.show()
 
 
