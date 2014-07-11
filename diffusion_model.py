@@ -173,7 +173,7 @@ class diffusion_model():
 		updates={}
 		gparams=T.grad(objective, self.params, consider_constant=[x_seq,t])
 		
-		mu=0.98
+		mu=0.99
 		
 		## constructs the update dictionary
 		for gparam, param, tparam, momentum in zip(gparams, self.params, self.true_params, self.momentums):

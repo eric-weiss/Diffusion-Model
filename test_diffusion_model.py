@@ -2,8 +2,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 from matplotlib import pyplot as pp
-from matplotlib import animation
 from diffusion_model import diffusion_model
+from matplotlib import animation
 from matplotlib.path import Path
 import scipy as sp
 
@@ -18,7 +18,7 @@ def whiten(x):
 
 
 nx=2
-nsamps=6400
+nsamps=16000
 
 nhid_mu=16
 nhid_cov=16
@@ -31,9 +31,9 @@ beta = 1. - np.exp(np.log(0.5)/float(nsteps))
 #beta=0.04
 print beta
 
-batchsize=10
+batchsize=64
 
-lrate=5e-4
+lrate=1e-3
 
 #making some data
 #nmix=2
@@ -54,6 +54,7 @@ data=4.0*data.T
 data=np.asarray(data, dtype='float32')
 
 data=whiten(data)
+print np.cov(data.T)
 
 #data=4.0*data/np.sqrt(np.mean(np.sum(data**2,axis=1)))
 print data.shape
@@ -101,7 +102,7 @@ tgates=get_tgates()
 #pp.plot(tgates[:,0,:,0]); pp.show()
 
 loss_hist=[]
-for i in range(4000):
+for i in range(8000):
 	idx=np.random.randint(nsamps-batchsize-1)
 	batchloss,lossterms=train_model(idx,lrate)
 	loss_hist.append(batchloss)
