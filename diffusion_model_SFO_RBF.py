@@ -7,7 +7,7 @@ from matplotlib import animation
 from matplotlib.path import Path
 
 import sys
-sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -19,14 +19,15 @@ nsamps=3000
 #batchsize=int(np.round(10.0*np.sqrt(nsamps)))
 n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
-nsteps=150
-beta=1. - np.exp(np.log(0.5)/float(nsteps))
+nsteps=200
+beta=1. - np.exp(np.log(0.6)/float(nsteps))
 nhid_mu=6**2
 nhid_cov=16
 ntgates=9
 
-save_forward_animation=False
-automate_training=True
+save_forward_animation=True
+save_reverse_animation=True
+automate_training=False
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
@@ -238,7 +239,7 @@ def get_samps(nsamps, params):
 									non_sequences=[nsamps,params[0],params[1],params[2],params[3],params[4],params[5],
 						params[6],params[7],params[8],params[9]],
 									n_steps=nsteps+1)
-	return samphist[-1,0,:,:], ts[:,0], updates
+	return samphist[:,0,:,:], ts[:,0], updates
 
 
 def get_tgating():
@@ -420,16 +421,16 @@ else:
 	
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=16)
+		opt_params = optimizer.optimize(num_passes=64)
 		end_loss = f_df(opt_params,fdata)[0]
-		samples=sample(opt_params)
+		samples=sample(opt_params)[-1]
 		pp.scatter(samples[:,0],samples[:,1]); pp.show()
 		print 'Current loss: ', end_loss
 		print opt_params[2]
 		
 		keyin=raw_input('End optimization? (y)')
 
-	
+
 
 x=np.arange(-3,3,0.1)
 #locs=[]
@@ -518,5 +519,27 @@ for i in range(width):
 	
 pp.show()
 
-
+if save_reverse_animation:
+	samples=sample(opt_params)
+	fig = pp.figure()
+	ax = pp.axes(xlim=(-5, 5), ylim=(-5, 5))
+	paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
+	
+	def init():
+		paths.set_offsets(samples[0,:,:])
+		return paths,
+	
+	# animation function.  This is called sequentially
+	def animate(i):
+		if i<nsteps:
+			paths.set_offsets(samples[i,:,:])
+		else:
+			paths.set_offsets(samples[-1,:,:])
+		return paths,
+	
+	anim = animation.FuncAnimation(fig, animate, init_func=init,
+								   frames=nsteps+50, interval=20, blit=True)
+	
+	mywriter = animation.FFMpegWriter()
+	anim.save('reverse_process.mp4', fps=20)
 
