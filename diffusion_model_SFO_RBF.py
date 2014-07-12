@@ -5,6 +5,7 @@ import theano.tensor as T
 import scipy as sp
 from matplotlib import animation
 from matplotlib.path import Path
+import cPickle as cp
 
 import sys
 sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
@@ -28,6 +29,7 @@ ntgates=9
 save_forward_animation=True
 save_reverse_animation=True
 automate_training=False
+save_model_and_optimizer=True
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
@@ -421,7 +423,7 @@ else:
 	
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=64)
+		opt_params = optimizer.optimize(num_passes=64*6)
 		end_loss = f_df(opt_params,fdata)[0]
 		samples=sample(opt_params)[-1]
 		pp.scatter(samples[:,0],samples[:,1]); pp.show()
@@ -543,3 +545,8 @@ if save_reverse_animation:
 	mywriter = animation.FFMpegWriter()
 	anim.save('reverse_process.mp4', fps=20)
 
+if save_model_and_optimizer:
+	f=open('model_optimizer.cpl','wb')
+	cp.dump(opt_params, f, 2)
+	cp.dump(optimizer, f, 2)
+	f.close()
