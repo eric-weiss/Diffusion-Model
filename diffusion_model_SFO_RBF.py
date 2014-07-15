@@ -8,7 +8,7 @@ from matplotlib.path import Path
 import cPickle as cp
 
 import sys
-sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -22,7 +22,7 @@ n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
 nsteps=200
 beta=1. - np.exp(np.log(0.6)/float(nsteps))
-nhid_mu=6**2
+nhid_mu=4**2
 nhid_cov=16
 ntgates=9
 
@@ -63,7 +63,7 @@ def compute_f_mu(x, t, params):
 	[centers, spreads, biases, M, b]=params
 	diffs=x.dimshuffle(0,1,2,'x')-centers.dimshuffle('x','x',0,1)
 	scaled_diffs=(diffs**2)*T.exp(spreads).dimshuffle('x','x',0,1)
-	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)
+	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)*0.0
 	h=T.exp(-exp_terms)
 	sumact=T.sum(h,axis=2)
 	#Normalization
@@ -92,7 +92,7 @@ def compute_f_cov(x, t, params):
 	[centers, spreads, biases, M, b]=params
 	diffs=x.dimshuffle(0,1,2,'x')-centers.dimshuffle('x','x',0,1)
 	scaled_diffs=(diffs**2)*T.exp(spreads).dimshuffle('x','x',0,1)
-	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)
+	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)*0.0
 	h=T.exp(-exp_terms)
 	sumact=T.sum(h,axis=2)
 	#Normalization
@@ -122,7 +122,7 @@ def compute_mu_field(x, t, params):
 	[centers, spreads, biases, M, b]=params
 	diffs=x.dimshuffle(0,1,2,'x')-centers.dimshuffle('x','x',0,1)
 	scaled_diffs=(diffs**2)*T.exp(spreads).dimshuffle('x','x',0,1)
-	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)
+	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)*0.0
 	h=T.exp(-exp_terms)
 	sumact=T.sum(h,axis=2)
 	#Normalization
@@ -152,7 +152,7 @@ def compute_cov_field(x, t, params):
 	[centers, spreads, biases, M, b]=params
 	diffs=x.dimshuffle(0,1,2,'x')-centers.dimshuffle('x','x',0,1)
 	scaled_diffs=(diffs**2)*T.exp(spreads).dimshuffle('x','x',0,1)
-	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)
+	exp_terms=T.sum(scaled_diffs,axis=2)+biases.dimshuffle('x','x',0)*0.0
 	h=T.exp(-exp_terms)
 	sumact=T.sum(h,axis=2)
 	#Normalization
@@ -423,7 +423,7 @@ else:
 	
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=64*6)
+		opt_params = optimizer.optimize(num_passes=64)
 		end_loss = f_df(opt_params,fdata)[0]
 		samples=sample(opt_params)[-1]
 		pp.scatter(samples[:,0],samples[:,1]); pp.show()
@@ -546,7 +546,7 @@ if save_reverse_animation:
 	anim.save('reverse_process.mp4', fps=20)
 
 if save_model_and_optimizer:
-	f=open('model_optimizer.cpl','wb')
+	f=open('model_optimizer_16h.cpl','wb')
 	cp.dump(opt_params, f, 2)
 	cp.dump(optimizer, f, 2)
 	f.close()
