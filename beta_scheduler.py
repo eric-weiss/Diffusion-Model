@@ -38,7 +38,7 @@ norm_scores=np.log(((2.0*np.pi)**(-1))*np.exp(-0.5*np.sum(gsamps**2,axis=1)))
 initial_KL=np.mean(model_scores-norm_scores)
 print initial_KL
 
-nsteps=20
+nsteps=50
 
 target_delta_KL=initial_KL/float(nsteps)
 
@@ -49,10 +49,10 @@ KLhist=[]
 betadict={}
 for i in range(nsteps):
 	
-	beta=0.01
+	beta=0.0025
 	means=data0*np.sqrt(1.0-beta) 
 	data1=(means + np.random.randn(nsamps, 2)*np.sqrt(beta)).astype(np.float32)
-	g1=mixture.GMM(n_components=200-8*i,n_iter=200)
+	g1=mixture.GMM(n_components=100-i,n_iter=200)
 	g1.fit(data1)
 	g1samps=g1.sample(8000)
 	g1_scores=g1.score(g1samps)

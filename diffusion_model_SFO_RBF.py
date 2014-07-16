@@ -8,7 +8,7 @@ from matplotlib.path import Path
 import cPickle as cp
 
 import sys
-sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -22,6 +22,8 @@ n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
 nsteps=200
 beta=1. - np.exp(np.log(0.6)/float(nsteps))
+
+
 nhid_mu=4**2
 nhid_cov=16
 ntgates=9
@@ -30,6 +32,7 @@ save_forward_animation=True
 save_reverse_animation=True
 automate_training=False
 save_model_and_optimizer=True
+load_model=True
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
@@ -268,7 +271,7 @@ def get_tgating():
 ### Making the swiss roll
 
 data=np.random.rand(nsamps,2)*8.0+4.0
-data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.25
+data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.02
 data=4.0*data.T
 
 #nmix=2
@@ -297,8 +300,13 @@ for i in range(nhid_cov):
 
 pp.scatter(mu_centers[0,:],mu_centers[1,:]); pp.show()
 
-init_params=[mu_centers, mu_spreads, mu_biases, mu_M, mu_b,
-			cov_centers, cov_spreads, cov_biases, cov_M, cov_b]
+if load_model==False:
+	init_params=[mu_centers, mu_spreads, mu_biases, mu_M, mu_b,
+				cov_centers, cov_spreads, cov_biases, cov_M, cov_b]
+else:
+	f=open('model_optimizer_16h.cpl','rb')
+	init_params=cp.load(f)
+	f.close()
 
 # Computing the forward trajectories and subfunction list
 
@@ -311,7 +319,7 @@ fdata=get_forward_traj(data)
 if save_forward_animation:
 	fig = pp.figure()
 	ax = pp.axes(xlim=(-5, 5), ylim=(-5, 5))
-	paths = ax.scatter(fdata[0,:,0],fdata[0,:,1],c='r')
+	paths = ax.scatter(fdata[0,:,0],fdata[0,:,1],c='r',alpha=.2)
 
 	def init():
 		paths.set_offsets(fdata[0,:,:])
@@ -423,7 +431,7 @@ else:
 	
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=64)
+		opt_params = optimizer.optimize(num_passes=32)
 		end_loss = f_df(opt_params,fdata)[0]
 		samples=sample(opt_params)[-1]
 		pp.scatter(samples[:,0],samples[:,1]); pp.show()
@@ -514,7 +522,7 @@ for i in range(width):
 		speed=speeds[i*width+j]
 		Umu=vecfield[:,:,0]
 		Vmu=vecfield[:,:,1]
-		lwmu = 2*speed/speedmax
+		lwmu = np.clip(30*speed/speedmax,0,5)
 		axmu.streamplot(x, x, Umu.T, Vmu.T, density=0.6, color='k', linewidth=lwmu)
 		axcov.pcolor(Y, X, covfield, vmin=covmin, vmax=covmax)
 		t=t+1.0/float(ntgates)
@@ -525,7 +533,7 @@ if save_reverse_animation:
 	samples=sample(opt_params)
 	fig = pp.figure()
 	ax = pp.axes(xlim=(-5, 5), ylim=(-5, 5))
-	paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r')
+	paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r',alpha=.2)
 	
 	def init():
 		paths.set_offsets(samples[0,:,:])
@@ -546,7 +554,7 @@ if save_reverse_animation:
 	anim.save('reverse_process.mp4', fps=20)
 
 if save_model_and_optimizer:
-	f=open('model_optimizer_16h.cpl','wb')
+	f=open('model_optimizer_16h_tight.cpl','wb')
 	cp.dump(opt_params, f, 2)
 	cp.dump(optimizer, f, 2)
 	f.close()
