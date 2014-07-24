@@ -20,11 +20,11 @@ nsamps=3000
 #batchsize=int(np.round(10.0*np.sqrt(nsamps)))
 n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
-nsteps=60
+nsteps=40
 #betas=(-2.0*np.ones(nsteps)).astype(np.float32)
 betas=(np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)))).astype(np.float32)
 beta_max=np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)) + 0.0001)
-beta_max[0]*=0.001
+#beta_max[0]*=0.001
 beta_max=beta_max*4.0
 
 nhid_mu=4**2
@@ -35,20 +35,20 @@ save_forward_animation=True
 save_reverse_animation=True
 automate_training=False
 save_model_and_optimizer=True
-load_model=False
+load_model=True
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
 mu_centers=(np.random.randn(nx, nhid_mu)*1.0).astype(np.float32)
 mu_spreads=(np.zeros((nx, nhid_mu))-1.0).astype(np.float32)
 mu_biases=np.zeros(nhid_mu).astype(np.float32)
-mu_M=(np.random.randn(nhid_mu, ntgates*nx)*0.01).astype(np.float32)
+mu_M=(np.random.randn(nhid_mu, ntgates*nx)*0.00001).astype(np.float32)
 mu_b=np.zeros((ntgates, nx)).astype(np.float32)
 
 cov_centers=(np.random.randn(nx, nhid_cov)*1.0).astype(np.float32)
 cov_spreads=(np.zeros((nx, nhid_cov))-1.0).astype(np.float32)
 cov_biases=np.zeros(nhid_cov).astype(np.float32)
-cov_M=(np.random.randn(nhid_cov, ntgates)*0.01).astype(np.float32)
+cov_M=(np.random.randn(nhid_cov, ntgates)*0.00001).astype(np.float32)
 cov_b=np.zeros(ntgates).astype(np.float32)
 
 theano_rng = RandomStreams()
@@ -89,7 +89,7 @@ def compute_f_mu(x, t, params):
 	
 	out=T.sum(mult,axis=2)
 	
-	out=out+x
+	#out=out+x
 	
 	return T.cast(out,'float32')
 
@@ -216,13 +216,22 @@ def loss(x_0, n, t, params):
 								sequences=[n, betas],
 								n_steps=nsteps)
 	
+	
 	forward_loss=-T.mean(fwdlosshist)+0.5*T.mean(T.sum((xhist[-1]**2+T.log(np.pi*2.0)),axis=1))
-	f_mu=compute_f_mu(xhist,t,muparams)
-	f_cov=compute_f_cov(xhist,t,covparams)
-	#f_cov=T.extra_ops.repeat(f_cov,self.nx,axis=2)
-	diffs=(f_mu[1:]-xhist[:-1])**2
-	gaussian_terms=T.sum(diffs*(1.0/f_cov[1:].dimshuffle(0,1,'x')),axis=2)
-	det_terms=T.sum(T.log(f_cov[1:].dimshuffle(0,1,'x')),axis=2)
+	
+	#f_mu=compute_f_mu(xhist,t,muparams)
+	#f_cov=compute_f_cov(xhist,t,covparams)
+	#diffs=(f_mu[2:]-xhist[:-1])**2
+	#gaussian_terms=T.sum(diffs*(1.0/f_cov[1:].dimshuffle(0,1,'x')),axis=2)
+	#det_terms=T.sum(T.log(f_cov[1:].dimshuffle(0,1,'x')),axis=2)
+	
+	f_mu=compute_f_mu(xhist,t,muparams)+xhist*(T.sqrt(1.0-betas)).dimshuffle(0,'x','x')
+	f_cov=compute_f_cov(xhist,t,covparams)*betas.dimshuffle(0,'x')
+	xhist=T.concatenate([x_0.dimshuffle('x',0,1), xhist],axis=0)
+	diffs=(f_mu-xhist[:-1])**2
+	gaussian_terms=T.sum(diffs*(1.0/f_cov.dimshuffle(0,1,'x')),axis=2)
+	det_terms=T.sum(T.log(f_cov.dimshuffle(0,1,'x')),axis=2)
+	
 	reverse_loss=T.mean(T.mean(gaussian_terms+det_terms))
 	return reverse_loss+forward_loss
 
@@ -238,13 +247,16 @@ def get_loss_grad(params, x_0, n):
 	return objective, gparams
 
 
-def reverse_step(x, t, nsamps, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9):
+def reverse_step(beta, x, t, nsamps, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9):
 	
 	muparams=[p0, p1, p2, p3, p4]
 	covparams=[p5, p6, p7, p8, p9]
-	f_mu=compute_f_mu(x,t,muparams)
-	f_cov=compute_f_cov(x,t,covparams)
-	#f_cov=T.extra_ops.repeat(f_cov,self.nx,axis=2)
+	
+	#f_mu=compute_f_mu(x,t,muparams)
+	#f_cov=compute_f_cov(x,t,covparams)
+	f_mu=compute_f_mu(x,t,muparams)+x*(T.sqrt(1.0-beta)).dimshuffle('x','x')
+	f_cov=compute_f_cov(x,t,covparams)*beta.dimshuffle('x','x')
+	
 	samps=theano_rng.normal(size=(1,nsamps, nx))
 	samps=samps*T.sqrt(f_cov).dimshuffle(0,1,'x')+f_mu
 	return samps,T.cast(t-1.0/nsteps,'float32')
@@ -259,10 +271,11 @@ def get_samps(nsamps, params):
 	x0=theano_rng.normal(size=(nsamps, nx))
 	x0=T.reshape(x0,(1,nsamps,nx))
 	[samphist, ts], updates=theano.scan(fn=reverse_step,
+									sequences=[params[-1]],
 									outputs_info=[x0,t],
 									non_sequences=[nsamps,params[0],params[1],params[2],params[3],params[4],params[5],
 						params[6],params[7],params[8],params[9]],
-									n_steps=nsteps+1)
+									n_steps=nsteps)
 	return samphist[:,0,:,:], ts[:,0], updates
 
 
@@ -290,7 +303,7 @@ def get_tgating():
 ### Making the swiss roll
 
 data=np.random.rand(nsamps,2)*8.0+4.0
-data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.4
+data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.1
 data=4.0*data.T
 
 #nmix=2
@@ -324,7 +337,7 @@ if load_model==False:
 				cov_centers, cov_spreads, cov_biases, cov_M, cov_b,
 				betas]
 else:
-	f=open('model_optimizer_learn_beta_4tgates.cpl','rb')
+	f=open('model_optimizer_learn_beta_4tgates_40T_noisier.cpl','rb')
 	init_params=cp.load(f)
 	f.close()
 
@@ -374,13 +387,13 @@ def f_df(params, subfunc):
 
 samplesT, tT, sample_updates=get_samps(nsamps, paramsT)
 sample_T=theano.function([mu_centersT, mu_spreadsT, mu_biasesT, mu_MT, mu_bT,
-					cov_centersT, cov_spreadsT, cov_biasesT, cov_MT, cov_bT],
+					cov_centersT, cov_spreadsT, cov_biasesT, cov_MT, cov_bT, betasT],
 					samplesT,
 					allow_input_downcast=True)
 
 def sample(params):
 	out = sample_T(params[0],params[1],params[2],params[3],params[4],params[5],
-						params[6],params[7],params[8],params[9])
+						params[6],params[7],params[8],params[9],params[10])
 	return out
 
 
@@ -423,7 +436,7 @@ else:
 	
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=32*1)
+		opt_params = optimizer.optimize(num_passes=32*8)
 		end_loss = f_df(opt_params,subfuncs[0])[0]
 		samples=sample(opt_params)[-1]
 		pp.scatter(samples[:,0],samples[:,1])
