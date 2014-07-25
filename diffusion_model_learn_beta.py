@@ -20,7 +20,7 @@ nsamps=3000
 #batchsize=int(np.round(10.0*np.sqrt(nsamps)))
 n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
-nsteps=40
+nsteps=30
 #betas=(-2.0*np.ones(nsteps)).astype(np.float32)
 betas=(np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)))).astype(np.float32)
 beta_max=np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)) + 0.0001)
@@ -29,13 +29,13 @@ beta_max=beta_max*4.0
 
 nhid_mu=4**2
 nhid_cov=16
-ntgates=4
+ntgates=5
 
 save_forward_animation=True
 save_reverse_animation=True
 automate_training=False
 save_model_and_optimizer=True
-load_model=True
+load_model=False
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
@@ -259,7 +259,7 @@ def reverse_step(beta, x, t, nsamps, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9):
 	
 	samps=theano_rng.normal(size=(1,nsamps, nx))
 	samps=samps*T.sqrt(f_cov).dimshuffle(0,1,'x')+f_mu
-	return samps,T.cast(t-1.0/nsteps,'float32')
+	return T.cast(samps,'float32'),T.cast(t-1.0/nsteps,'float32')
 
 
 def get_samps(nsamps, params):
@@ -270,8 +270,11 @@ def get_samps(nsamps, params):
 	t=T.cast(t,'float32')
 	x0=theano_rng.normal(size=(nsamps, nx))
 	x0=T.reshape(x0,(1,nsamps,nx))
+	betas=T.nnet.sigmoid(params[-1])*beta_max
+	flip_idxs=T.cast(-T.arange(nsteps)+nsteps-1,'int32')
+	betas_flipped=betas[flip_idxs]
 	[samphist, ts], updates=theano.scan(fn=reverse_step,
-									sequences=[params[-1]],
+									sequences=[betas_flipped],
 									outputs_info=[x0,t],
 									non_sequences=[nsamps,params[0],params[1],params[2],params[3],params[4],params[5],
 						params[6],params[7],params[8],params[9]],
@@ -303,7 +306,7 @@ def get_tgating():
 ### Making the swiss roll
 
 data=np.random.rand(nsamps,2)*8.0+4.0
-data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.1
+data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.01
 data=4.0*data.T
 
 #nmix=2
@@ -330,14 +333,14 @@ for i in range(nhid_cov):
 	idx=np.random.randint(0,nsamps)
 	cov_centers[:,i]=data[idx]
 
-pp.scatter(mu_centers[0,:],mu_centers[1,:]); pp.show()
+#pp.scatter(mu_centers[0,:],mu_centers[1,:]); pp.show()
 
 if load_model==False:
 	init_params=[mu_centers, mu_spreads, mu_biases, mu_M, mu_b,
 				cov_centers, cov_spreads, cov_biases, cov_M, cov_b,
 				betas]
 else:
-	f=open('model_optimizer_learn_beta_4tgates_40T_noisier.cpl','rb')
+	f=open('model_optimizer_learn_beta_4tgates_10T_sharp.cpl','rb')
 	init_params=cp.load(f)
 	f.close()
 
@@ -433,20 +436,19 @@ else:
 	# Running the optimization
 	init_loss = f_df(init_params,subfuncs[0])[0]
 	print init_loss
-	
 	keyin=''
 	while keyin!='y':
 		opt_params = optimizer.optimize(num_passes=32*8)
 		end_loss = f_df(opt_params,subfuncs[0])[0]
-		samples=sample(opt_params)[-1]
-		pp.scatter(samples[:,0],samples[:,1])
+		samples=sample(opt_params)
+		print samples.shape
+		pp.scatter(samples[-1,:,0],samples[-1,:,1])
 		pp.figure(2)
 		pp.plot((1.0/(1.0+np.exp(-opt_params[-1])))*beta_max)
 		pp.plot(beta_max)
 		pp.show()
 		print 'Current loss: ', end_loss
 		print opt_params[2]
-		
 		keyin=raw_input('End optimization? (y)')
 
 
@@ -497,46 +499,46 @@ get_cov_field=theano.function([locsT, tT, cov_centersT, cov_spreadsT, cov_biases
 									allow_input_downcast=True)
 
 t=0.0
-vecfig=pp.figure(figsize=(8,8))
-covfig=pp.figure(figsize=(8,8))
-width=int(np.sqrt(ntgates))
-vecfields=[]
-covfields=[]
-speeds=[]
-covmags=[]
-covmax=0
-covmin=99999
-speedmax=0
-for i in range(ntgates):
-		vecfield=get_mu_field(locs, t, centers, spreads, biases, M, b)
-		covfield=get_cov_field(locs, t, covcenters, covspreads, covbiases, covM, covb)
-		Umu=vecfield[:,:,0]
-		Vmu=vecfield[:,:,1]
-		vecfields.append(vecfield)
-		covfields.append(covfield)
-		speed = np.sqrt(Umu**2 + Vmu**2)
-		speeds.append(speed)
-		speedmax=np.maximum(speed.max(),speedmax)
-		covmax=np.maximum(covfield.max(),covmax)
-		covmin=np.minimum(covfield.min(),covmin)
-		t=t+1.0/float(ntgates)
+#vecfig=pp.figure(figsize=(8,8))
+#covfig=pp.figure(figsize=(8,8))
+#width=int(np.sqrt(ntgates))
+#vecfields=[]
+#covfields=[]
+#speeds=[]
+#covmags=[]
+#covmax=0
+#covmin=99999
+#speedmax=0
+#for i in range(ntgates):
+		#vecfield=get_mu_field(locs, t, centers, spreads, biases, M, b)
+		#covfield=get_cov_field(locs, t, covcenters, covspreads, covbiases, covM, covb)
+		#Umu=vecfield[:,:,0]
+		#Vmu=vecfield[:,:,1]
+		#vecfields.append(vecfield)
+		#covfields.append(covfield)
+		#speed = np.sqrt(Umu**2 + Vmu**2)
+		#speeds.append(speed)
+		#speedmax=np.maximum(speed.max(),speedmax)
+		#covmax=np.maximum(covfield.max(),covmax)
+		#covmin=np.minimum(covfield.min(),covmin)
+		#t=t+1.0/float(ntgates)
 
-t=0.0
-for i in range(width):
-	for j in range(width):
-		axmu=vecfig.add_subplot(width, width, i*width+j+1)
-		axcov=covfig.add_subplot(width, width, i*width+j+1)
-		vecfield=vecfields[i*width+j]
-		covfield=covfields[i*width+j]
-		speed=speeds[i*width+j]
-		Umu=vecfield[:,:,0]
-		Vmu=vecfield[:,:,1]
-		lwmu = np.clip(30*speed/speedmax,0,5)
-		axmu.streamplot(x, x, Umu.T, Vmu.T, density=0.6, color='k', linewidth=lwmu)
-		axcov.pcolor(Y, X, covfield, vmin=covmin, vmax=covmax)
-		t=t+1.0/float(ntgates)
+#t=0.0
+#for i in range(width):
+	#for j in range(width):
+		#axmu=vecfig.add_subplot(width, width, i*width+j+1)
+		#axcov=covfig.add_subplot(width, width, i*width+j+1)
+		#vecfield=vecfields[i*width+j]
+		#covfield=covfields[i*width+j]
+		#speed=speeds[i*width+j]
+		#Umu=vecfield[:,:,0]
+		#Vmu=vecfield[:,:,1]
+		#lwmu = np.clip(30*speed/speedmax,0,5)
+		#axmu.streamplot(x, x, Umu.T, Vmu.T, density=0.6, color='k', linewidth=lwmu)
+		#axcov.pcolor(Y, X, covfield, vmin=covmin, vmax=covmax)
+		#t=t+1.0/float(ntgates)
 	
-pp.show()
+#pp.show()
 
 if save_reverse_animation:
 	samples=sample(opt_params)
@@ -590,7 +592,7 @@ if save_forward_animation:
 
 
 if save_model_and_optimizer:
-	f=open('model_optimizer_learn_beta_4tgates_40T_noisier.cpl','wb')
+	f=open('model_optimizer_learn_beta_2tgates_30T_sharp.cpl','wb')
 	cp.dump(opt_params, f, 2)
 	cp.dump(optimizer, f, 2)
 	f.close()
