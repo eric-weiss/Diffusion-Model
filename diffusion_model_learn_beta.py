@@ -8,7 +8,7 @@ from matplotlib.path import Path
 import cPickle as cp
 
 import sys
-sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -35,7 +35,7 @@ save_forward_animation=True
 save_reverse_animation=True
 automate_training=False
 save_model_and_optimizer=True
-load_model=False
+load_model=True
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
@@ -340,7 +340,7 @@ if load_model==False:
 				cov_centers, cov_spreads, cov_biases, cov_M, cov_b,
 				betas]
 else:
-	f=open('model_optimizer_learn_beta_4tgates_10T_sharp.cpl','rb')
+	f=open('model_optimizer_learn_beta_2tgates_30T_sharp.cpl','rb')
 	init_params=cp.load(f)
 	f.close()
 
@@ -438,7 +438,7 @@ else:
 	print init_loss
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=32*8)
+		opt_params = optimizer.optimize(num_passes=32*16)
 		end_loss = f_df(opt_params,subfuncs[0])[0]
 		samples=sample(opt_params)
 		print samples.shape
