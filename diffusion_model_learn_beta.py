@@ -9,7 +9,7 @@ import cPickle as cp
 
 
 import sys
-sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -21,27 +21,27 @@ nsamps=12000
 #batchsize=int(np.round(10.0*np.sqrt(nsamps)))
 n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
-nsteps=20
+nsteps=100
 #betas=(-2.0*np.ones(nsteps)).astype(np.float32)
 betas=(np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)))).astype(np.float32)
 beta_max=np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)) + 0.0001)
 #beta_max[0]*=0.001
-beta_max=beta_max*2.0
+beta_max=beta_max*4.0
 
 nhid_mu=4**2
 nhid_cov=16
-ntgates=9
+ntgates=80
 
 save_forward_animation=True
 save_reverse_animation=True
-plot_reverse_process=True
+plot_reverse_process=False
 automate_training=False
 
 save_model_and_optimizer=True
-save_fn='model_optimizer_learn_beta_2tgates_20T_noisier_test1_2.cpl'
+save_fn='model_optimizer_learn_beta_80tgates_100T_noisier.cpl'
 
 load_model=False
-load_fn='model_optimizer_learn_beta_2tgates_20T_noisier_test1_2.cpl'
+load_fn='model_optimizer_learn_beta_80tgates_100T_noisier.cpl'
 
 kT=-np.log(0.5)*8.0*ntgates**2
 
@@ -332,11 +332,14 @@ data=4.0*data.T
 data=np.asarray(data, dtype='float32')
 data=whiten(data)*1.0
 pp.figure(1)
+pp.suptitle('Data Samples')
 pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
-pp.scatter(data[:,0],data[:,1])
+pp.scatter(data[:,0],data[:,1],c='b',alpha=0.2)
 
 pp.figure(2)
-pp.hist(np.sqrt(np.sum(data**2,axis=1)),50)
+pp.suptitle('Histogram: Data Density vs. Distance from Origin')
+pp.axes(xlim=(0.25,2.25),ylim=(0,5),xlabel='Distance from Origin',ylabel='Probability Density')
+pp.hist(np.sqrt(np.sum(data**2,axis=1)),50,normed=True)
 pp.show()
 
 for i in range(nhid_mu):
@@ -413,6 +416,31 @@ def sample(params):
 						params[6],params[7],params[8],params[9],params[10])
 	return out
 
+opt_params=init_params
+if plot_reverse_process:
+	samples=sample(opt_params)
+	pp.figure(1)
+	pp.suptitle('Reverse Process Samples at t=T')
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(samples[0,:,0],samples[0,:,1],c='r',alpha=.2)
+	pp.figure(2)
+	pp.suptitle('Reverse Process Samples at t=T/2')
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(samples[nsteps/2,:,0],samples[nsteps/2,:,1],c='r',alpha=.2)
+	pp.figure(3)
+	pp.suptitle('Reverse Process Samples at t=0')
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(samples[-1,:,0],samples[-1,:,1],c='r',alpha=.2)
+	pp.figure(4)
+	pp.suptitle('Histogram: Model Density vs. Distance from Origin')
+	pp.axes(xlim=(0.25,2.25),ylim=(0,5),xlabel='Distance from Origin',ylabel='Probability Density')
+	pp.hist(np.sqrt(np.sum(samples[-1]**2,axis=1)),50,normed=True,color='r')
+	pp.figure(5)
+	pp.suptitle(r'Learned $\beta$ Schedule')
+	pp.axes(xlabel='t', ylabel=r'$\beta$')
+	pp.plot(-np.arange(nsteps)+nsteps-1,(1.0/(1.0+np.exp(-opt_params[-1])))*beta_max)
+	pp.show()
+
 
 if automate_training:
 	optimizer = SFO(f_df, init_params, subfuncs)
@@ -452,7 +480,7 @@ else:
 	print init_loss
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=32*24)
+		opt_params = optimizer.optimize(num_passes=32*8*20)
 		end_loss = f_df(opt_params,subfuncs[0])[0]
 		samples=sample(opt_params)
 		print samples.shape
@@ -555,22 +583,6 @@ t=0.0
 		#t=t+1.0/float(ntgates)
 	
 #pp.show()
-
-if plot_reverse_process:
-	samples=sample(opt_params)
-	pp.figure(1)
-	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
-	pp.suptitle('A')
-	pp.scatter(samples[0,:,0],samples[0,:,1],c='r',alpha=.2)
-	pp.figure(2)
-	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
-	pp.scatter(samples[nsteps/2,:,0],samples[nsteps/2,:,1],c='r',alpha=.2)
-	pp.figure(3)
-	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
-	pp.scatter(samples[-1,:,0],samples[-1,:,1],c='r',alpha=.2)
-	pp.figure(4)
-	pp.hist(np.sqrt(np.sum(samples[-1]**2,axis=1)),100)
-	pp.show()
 
 
 if save_reverse_animation:
