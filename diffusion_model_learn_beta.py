@@ -7,6 +7,7 @@ from matplotlib import animation
 from matplotlib.path import Path
 import cPickle as cp
 
+
 import sys
 sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
@@ -15,29 +16,37 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 
 nx=2
-nsamps=3000
+nsamps=12000
 #n_subfuncs=int(np.round(np.sqrt(nsamps)/10.0))
 #batchsize=int(np.round(10.0*np.sqrt(nsamps)))
 n_subfuncs=75
 batchsize=int(nsamps/n_subfuncs)
-nsteps=30
+nsteps=20
 #betas=(-2.0*np.ones(nsteps)).astype(np.float32)
 betas=(np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)))).astype(np.float32)
 beta_max=np.ones(nsteps)*(1. - np.exp(np.log(0.6)/float(nsteps)) + 0.0001)
 #beta_max[0]*=0.001
-beta_max=beta_max*4.0
+beta_max=beta_max*2.0
 
 nhid_mu=4**2
 nhid_cov=16
-ntgates=5
+ntgates=9
 
 save_forward_animation=True
 save_reverse_animation=True
+plot_reverse_process=True
 automate_training=False
+
 save_model_and_optimizer=True
+save_fn='model_optimizer_learn_beta_2tgates_20T_noisier_test1_2.cpl'
+
 load_model=False
+load_fn='model_optimizer_learn_beta_2tgates_20T_noisier_test1_2.cpl'
 
 kT=-np.log(0.5)*8.0*ntgates**2
+
+xlm=3
+ylm=3
 
 mu_centers=(np.random.randn(nx, nhid_mu)*1.0).astype(np.float32)
 mu_spreads=(np.zeros((nx, nhid_mu))-1.0).astype(np.float32)
@@ -306,7 +315,7 @@ def get_tgating():
 ### Making the swiss roll
 
 data=np.random.rand(nsamps,2)*8.0+4.0
-data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.01
+data=np.asarray([data[:,0]*np.cos(data[:,0]), data[:,0]*np.sin(data[:,0])])+np.random.randn(2,nsamps)*0.1
 data=4.0*data.T
 
 #nmix=2
@@ -322,8 +331,13 @@ data=4.0*data.T
 
 data=np.asarray(data, dtype='float32')
 data=whiten(data)*1.0
+pp.figure(1)
+pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+pp.scatter(data[:,0],data[:,1])
 
-pp.scatter(data[:,0],data[:,1]); pp.show()
+pp.figure(2)
+pp.hist(np.sqrt(np.sum(data**2,axis=1)),50)
+pp.show()
 
 for i in range(nhid_mu):
 	idx=np.random.randint(0,nsamps)
@@ -340,7 +354,7 @@ if load_model==False:
 				cov_centers, cov_spreads, cov_biases, cov_M, cov_b,
 				betas]
 else:
-	f=open('model_optimizer_learn_beta_4tgates_10T_sharp.cpl','rb')
+	f=open(load_fn,'rb')
 	init_params=cp.load(f)
 	f.close()
 
@@ -432,24 +446,26 @@ if automate_training:
 else:
 	# Creating the optimizer
 	optimizer = SFO(f_df, init_params, subfuncs)
-	
+	old_params=init_params
 	# Running the optimization
 	init_loss = f_df(init_params,subfuncs[0])[0]
 	print init_loss
 	keyin=''
 	while keyin!='y':
-		opt_params = optimizer.optimize(num_passes=32*8)
+		opt_params = optimizer.optimize(num_passes=32*24)
 		end_loss = f_df(opt_params,subfuncs[0])[0]
 		samples=sample(opt_params)
 		print samples.shape
 		pp.scatter(samples[-1,:,0],samples[-1,:,1])
 		pp.figure(2)
-		pp.plot((1.0/(1.0+np.exp(-opt_params[-1])))*beta_max)
-		pp.plot(beta_max)
+		pp.plot((1.0/(1.0+np.exp(-opt_params[-1])))*beta_max,color='b')
+		pp.plot((1.0/(1.0+np.exp(-old_params[-1])))*beta_max,color='r')
+		pp.plot(beta_max,color='g')
 		pp.show()
 		print 'Current loss: ', end_loss
 		print opt_params[2]
 		keyin=raw_input('End optimization? (y)')
+		old_params=opt_params
 
 
 
@@ -481,7 +497,7 @@ for i in range(width):
 		#ax.matshow(hnorm[:,i*width+j].reshape((np.sqrt(hnorm.shape[0]),np.sqrt(hnorm.shape[0]))))
 		ax.pcolor(Y, X, hnorm[:,:,i*width+j], vmin=0, vmax=1)
 
-
+pp.show()
 ## For plotting the mu and covariance "fields"
 
 locsT=T.ftensor3()
@@ -540,10 +556,27 @@ t=0.0
 	
 #pp.show()
 
+if plot_reverse_process:
+	samples=sample(opt_params)
+	pp.figure(1)
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.suptitle('A')
+	pp.scatter(samples[0,:,0],samples[0,:,1],c='r',alpha=.2)
+	pp.figure(2)
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(samples[nsteps/2,:,0],samples[nsteps/2,:,1],c='r',alpha=.2)
+	pp.figure(3)
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(samples[-1,:,0],samples[-1,:,1],c='r',alpha=.2)
+	pp.figure(4)
+	pp.hist(np.sqrt(np.sum(samples[-1]**2,axis=1)),100)
+	pp.show()
+
+
 if save_reverse_animation:
 	samples=sample(opt_params)
 	fig = pp.figure()
-	ax = pp.axes(xlim=(-5, 5), ylim=(-5, 5))
+	ax = pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
 	paths = ax.scatter(samples[0,:,0],samples[0,:,1],c='r',alpha=.2)
 	
 	def init():
@@ -569,7 +602,7 @@ betas=opt_params[-1]
 if save_forward_animation:
 	fdata=get_forward_traj(data,betas)
 	fig = pp.figure()
-	ax = pp.axes(xlim=(-5, 5), ylim=(-5, 5))
+	ax = pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
 	paths = ax.scatter(fdata[0,:,0],fdata[0,:,1],c='r',alpha=.2)
 
 	def init():
@@ -592,7 +625,7 @@ if save_forward_animation:
 
 
 if save_model_and_optimizer:
-	f=open('model_optimizer_learn_beta_2tgates_30T_sharp.cpl','wb')
+	f=open(save_fn,'wb')
 	cp.dump(opt_params, f, 2)
 	cp.dump(optimizer, f, 2)
 	f.close()
