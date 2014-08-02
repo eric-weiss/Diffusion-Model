@@ -9,7 +9,7 @@ import cPickle as cp
 
 
 import sys
-sys.path.append('/home/float/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('~/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
