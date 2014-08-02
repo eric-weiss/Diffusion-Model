@@ -9,7 +9,7 @@ import cPickle as cp
 
 
 import sys
-sys.path.append('~/Desktop/Sum-of-Functions-Optimizer/')
+sys.path.append('/home/eweiss/Desktop/Sum-of-Functions-Optimizer/')
 from sfo import SFO
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -34,10 +34,10 @@ nhid_mu=4**2
 nhid_cov=4**2
 ntgates=16
 
-n_epochs=32*24
+n_epochs=32*48
 
-save_forward_animation=True
-save_reverse_animation=True
+save_forward_animation=False
+save_reverse_animation=False
 plot_reverse_process=False
 automate_training=False
 
@@ -352,18 +352,18 @@ data=4.0*data.T
 
 data=np.asarray(data, dtype='float32')
 data=whiten(data)*1.0
-pp.figure(1)
-pp.suptitle('Data Samples')
-pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+#pp.figure(1)
+#pp.suptitle('Data Samples')
+#pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
 #pp.scatter(data[:,0],data[:,1],c='b',alpha=0.2)
-pp.hexbin(data[:,0],data[:,1])
-pp.colorbar()
+#pp.hexbin(data[:,0],data[:,1])
+#pp.colorbar()
 
-pp.figure(2)
-pp.suptitle('Histogram: Data Density vs. Distance from Origin')
-pp.axes(xlim=(0.25,2.25),ylim=(0,5),xlabel='Distance from Origin',ylabel='Probability Density')
-pp.hist(np.sqrt(np.sum(data**2,axis=1)),50,normed=True)
-pp.show()
+#pp.figure(2)
+#pp.suptitle('Histogram: Data Density vs. Distance from Origin')
+#pp.axes(xlim=(0.25,2.25),ylim=(0,5),xlabel='Distance from Origin',ylabel='Probability Density')
+#pp.hist(np.sqrt(np.sum(data**2,axis=1)),50,normed=True)
+#pp.show()
 
 for i in range(nhid_mu):
 	idx=np.random.randint(0,nsamps)
