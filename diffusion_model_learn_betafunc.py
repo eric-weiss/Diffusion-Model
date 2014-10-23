@@ -16,7 +16,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 
 nx=2
-nsamps=64000
+nsamps=6400
 #n_subfuncs=int(np.round(np.sqrt(nsamps)/10.0))
 #batchsize=int(np.round(10.0*np.sqrt(nsamps)))
 n_subfuncs=75
@@ -38,10 +38,10 @@ n_epochs=32*48
 
 save_forward_animation=False
 save_reverse_animation=False
-plot_reverse_process=False
+plot_reverse_process=True
 automate_training=False
 
-save_model_and_optimizer=True
+save_model_and_optimizer=False
 save_fn='model_optimizer_learn_beta_18tgates_20T_noisier_bigdata.cpl'
 
 load_model=True
@@ -442,30 +442,48 @@ def sample(params):
 	return out
 
 opt_params=init_params
+
+forward_data=get_forward_traj(data, init_params[-1])
 if plot_reverse_process:
 	samples=sample(opt_params)
+	#Reverse
 	pp.figure(1)
-	pp.suptitle('Reverse Process Samples at t=T')
+	#pp.suptitle('Reverse Process Samples at t=T')
 	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
 	pp.scatter(samples[0,:,0],samples[0,:,1],c='r',alpha=.2)
 	pp.figure(2)
-	pp.suptitle('Reverse Process Samples at t=T/2')
+	#pp.suptitle('Reverse Process Samples at t=T/2')
 	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
 	pp.scatter(samples[nsteps/2,:,0],samples[nsteps/2,:,1],c='r',alpha=.2)
 	pp.figure(3)
-	pp.suptitle('Reverse Process Samples at t=0')
+	#pp.suptitle('Reverse Process Samples at t=0')
 	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
 	pp.scatter(samples[-1,:,0],samples[-1,:,1],c='r',alpha=.2)
+	
+	#Forward
 	pp.figure(4)
-	pp.suptitle('Histogram: Model Density vs. Distance from Origin')
-	pp.axes(xlim=(0.25,2.25),ylim=(0,5),xlabel='Distance from Origin',ylabel='Probability Density')
-	pp.hist(np.sqrt(np.sum(samples[-1]**2,axis=1)),50,normed=True,color='r')
+	#pp.suptitle('Forward Process Samples at t=T')
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(forward_data[0,:,0],forward_data[0,:,1],c='b',alpha=.2)
 	pp.figure(5)
-	pp.suptitle(r'Learned $\beta$ Schedule')
-	pp.axes(xlabel='t', ylabel=r'$\beta$')
-	pp.plot(np.arange(nsteps),(1.0/(1.0+np.exp(-opt_params[-1])))*beta_max)
+	#pp.suptitle('Forward Process Samples at t=T/2')
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(forward_data[nsteps/2,:,0],forward_data[nsteps/2,:,1],c='b',alpha=.2)
+	pp.figure(6)
+	#pp.suptitle('Forward Process Samples at t=0')
+	pp.axes(xlim=(-xlm, xlm), ylim=(-ylm, ylm))
+	pp.scatter(forward_data[-1,:,0],forward_data[-1,:,1],c='b',alpha=.2)
+	#pp.figure(7)
+	#pp.suptitle('Histogram: Model Density vs. Distance from Origin')
+	#pp.axes(xlim=(0.25,2.25),ylim=(0,5),xlabel='Distance from Origin',ylabel='Probability Density')
+	#pp.hist(np.sqrt(np.sum(samples[-1]**2,axis=1)),50,normed=True,color='r')
+	#pp.figure(8)
+	#pp.suptitle(r'Learned $\beta$ Schedule')
+	#pp.axes(xlabel='t', ylabel=r'$\beta$')
+	#pp.plot(np.arange(nsteps),(1.0/(1.0+np.exp(-opt_params[-1])))*beta_max)
 	pp.show()
 
+exit()
 
 if automate_training:
 	optimizer = SFO(f_df, init_params, subfuncs)
